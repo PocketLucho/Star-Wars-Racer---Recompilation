@@ -1,0 +1,201 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fee2357..11d6e6a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1474,7 +1474,7 @@ if(NOT LIBRETRO)
+ 			endif()
+ 			set_target_properties(${PROJECT_NAME} PROPERTIES RESOURCE "${ResourceFiles}")
+ 		else()
+-			if(NOT BUILD_TESTING AND ("x86" IN_LIST ARCHITECTURE OR "x86_64" IN_LIST ARCHITECTURE))
++			if(NOT BUILD_TESTING AND ("x86" IN_LIST ARCHITECTURE OR "x86_64" IN_LIST ARCHITECTURE) AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/deps/Spout/CMakeLists.txt)
+ 				target_include_directories(${PROJECT_NAME} PRIVATE core/deps/Spout/SPOUTSDK/SpoutGL)
+ 				target_include_directories(${PROJECT_NAME} PRIVATE core/deps/Spout/SPOUTSDK/SpoutDirectX/SpoutDX)
+ 				SET(SPOUT_BUILD_CMT OFF CACHE BOOL "For Visual Studio - build /MT to link runtime libraries" FORCE)
+diff --git a/core/cfg/cl.cpp b/core/cfg/cl.cpp
+index 69090df..2ff9146 100644
+--- a/core/cfg/cl.cpp
++++ b/core/cfg/cl.cpp
+@@ -16,6 +16,7 @@
+     You should have received a copy of the GNU General Public License
+     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
+ */
++#include <filesystem>
+ #include "cfg/cfg.h"
+ #include "stdclass.h"
+ #include <cstdio>
+@@ -221,6 +222,32 @@ void parseCommandLine(int argc, const char * const argv[])
+ 			WARN_LOG(COMMON, "Rest of command line ignored: '%s'...", argv[i + 1]);
+ 		break;
+ 	}
++#ifdef SWR_AOT
++	/* Star Wars Racer recomp: no image on the command line -> look next to the program (and in a
++	   "dreamcast" subfolder) for a .chd / .gdi / .cdi, Star Wars Racer first */
++	if (settings.content.path.empty())
++	{
++		namespace fs = std::filesystem;
++		std::string best;
++		for (const char *sub : { "", "dreamcast" })
++		{
++			std::error_code ec;
++			fs::path dir = fs::u8path(get_writable_config_path(sub));
++			for (const auto& e : fs::directory_iterator(dir, ec))
++			{
++				std::string name = e.path().filename().u8string();
++				std::string ext = get_file_extension(name);
++				if (ext != "chd" && ext != "gdi" && ext != "cdi") continue;
++				std::string low = name; for (auto& ch : low) ch = (char)tolower((unsigned char)ch);
++				bool racer = low.find("racer") != std::string::npos;
++				if (best.empty() || racer) best = e.path().u8string();
++				if (racer) break;
++			}
++			if (!best.empty()) break;
++		}
++		if (!best.empty()) { INFO_LOG(COMMON, "Using '%s' (found next to the program)", best.c_str()); settings.content.path = best; }
++	}
++#endif
+ }
+ 
+ }	// namespace config
+diff --git a/core/emulator.cpp b/core/emulator.cpp
+index e196b0b..20ce7a8 100644
+--- a/core/emulator.cpp
++++ b/core/emulator.cpp
+@@ -50,6 +50,9 @@
+ #include "hw/sh4/sh4_interpreter.h"
+ #include "hw/sh4/dyna/ngen.h"
+ #include "oslib/i18n.h"
++#ifdef SWR_AOT
++Sh4Executor *Get_Sh4AotExecutor();
++#endif
+ 
+ settings_t settings;
+ constexpr char const *BIOS_TITLE = "Dreamcast BIOS";
+@@ -534,11 +537,19 @@ void Emulator::init()
+ 		INFO_LOG(INTERPRETER, "Using Interpreter");
+ 	interpreter = Get_Sh4Interpreter();
+ 	interpreter->Init();
++#ifdef SWR_AOT
++	if (!getenv("SWRAOT_OFF")) Get_Sh4AotExecutor()->Init();
++#endif
+ 	state = Init;
+ }
+ 
+ Sh4Executor *Emulator::getSh4Executor()
+ {
++#ifdef SWR_AOT
++	/* Star Wars Racer recomp: our SH-4 core (AOT blocks + interpreter) unless SWRAOT_OFF is set */
++	static Sh4Executor *aot = getenv("SWRAOT_OFF") ? nullptr : Get_Sh4AotExecutor();
++	if (aot) return aot;
++#endif
+ #if FEAT_SHREC != DYNAREC_NONE
+ 	if(config::DynarecEnabled)
+ 		return recompiler;
+diff --git a/core/hw/sh4/CMakeLists.txt b/core/hw/sh4/CMakeLists.txt
+index e112588..71e92bb 100644
+--- a/core/hw/sh4/CMakeLists.txt
++++ b/core/hw/sh4/CMakeLists.txt
+@@ -53,3 +53,15 @@ target_sources(${PROJECT_NAME} PRIVATE
+         sh4_sched.cpp
+         sh4_sched.h
+         storeq.cpp)
++
++# Star Wars Racer recomp: our SH-4 core (interpreter + AOT blocks) as an executor (hw/sh4/swraot)
++option(SWR_AOT "Use the Star Wars Racer recomp SH-4 core (interpreter + AOT blocks)" ON)
++if(SWR_AOT)
++	set(SWRAOT_BLOCKS "${CMAKE_CURRENT_SOURCE_DIR}/swraot/blk_stub.c" CACHE FILEPATH "C file(s) with the AOT block table (tools/blockgen.py output)")
++	target_sources(${PROJECT_NAME} PRIVATE
++		swraot/swraot_executor.cpp swraot/swraot_bus.c swraot/sh4interp.c swraot/blockrt.c swraot/blk_module.c ${SWRAOT_BLOCKS})
++	target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/swraot)
++	target_compile_definitions(${PROJECT_NAME} PRIVATE SWR_AOT=1)
++	set_source_files_properties(swraot/swraot_bus.c swraot/sh4interp.c swraot/blockrt.c swraot/blk_module.c ${SWRAOT_BLOCKS}
++		PROPERTIES COMPILE_OPTIONS "-fexceptions;-O2;-fno-strict-aliasing;-w")
++endif()
+diff --git a/core/hw/sh4/sh4_mem.cpp b/core/hw/sh4/sh4_mem.cpp
+index 196cdf5..f471af6 100644
+--- a/core/hw/sh4/sh4_mem.cpp
++++ b/core/hw/sh4/sh4_mem.cpp
+@@ -201,8 +201,15 @@ void mem_Term()
+ 	addrspace::term();
+ }
+ 
++#ifdef SWR_AOT
++extern "C" void swraot_ram_written(unsigned addr, unsigned size);
++#define SWRAOT_WRITTEN(a, n) swraot_ram_written(a, n)
++#else
++#define SWRAOT_WRITTEN(a, n)
++#endif
+ void WriteMemBlock_nommu_dma(u32 dst, u32 src, u32 size)
+ {
++	SWRAOT_WRITTEN(dst, size);
+ 	bool dst_ismem, src_ismem;
+ 	void* dst_ptr = addrspace::writeConst(dst, dst_ismem, 4);
+ 	void* src_ptr = addrspace::readConst(src, src_ismem, 4);
+@@ -225,6 +232,7 @@ void WriteMemBlock_nommu_dma(u32 dst, u32 src, u32 size)
+ 
+ void WriteMemBlock_nommu_ptr(u32 dst, const u32 *src, u32 size)
+ {
++	SWRAOT_WRITTEN(dst, size);
+ 	bool dst_ismem;
+ 
+ 	void* dst_ptr = addrspace::writeConst(dst, dst_ismem, 4);
+@@ -259,6 +267,7 @@ void WriteMemBlock_nommu_ptr(u32 dst, const u32 *src, u32 size)
+ 
+ void WriteMemBlock_nommu_sq(u32 dst, const SQBuffer *src)
+ {
++	SWRAOT_WRITTEN(dst, 32);
+ 	// destination address is 32-byte aligned
+ 	SQBuffer *pdst = (SQBuffer *)GetMemPtr(dst, sizeof(SQBuffer));
+ 	if (pdst != nullptr)
+diff --git a/core/hw/sh4/storeq.cpp b/core/hw/sh4/storeq.cpp
+index 2f4f712..2875e23 100644
+--- a/core/hw/sh4/storeq.cpp
++++ b/core/hw/sh4/storeq.cpp
+@@ -52,8 +52,14 @@ static void DYNACALL sqWrite(u32 dest, Sh4Context *ctx)
+ }
+ 
+ //yes, this micro optimization makes a difference
++#ifdef SWR_AOT
++extern "C" void swraot_ram_written(unsigned addr, unsigned size);
++#endif
+ static void DYNACALL sqWrite_nommu_area_3(u32 dest, Sh4Context *ctx)
+ {
++#ifdef SWR_AOT
++	swraot_ram_written(dest & ~31u, 32);
++#endif
+ 	SQBuffer *pmem = (SQBuffer *)((u8 *)ctx + sizeof(Sh4Context) + 0x0C000000);
+ 	pmem += (dest & (RAM_SIZE_MAX - 1)) >> 5;
+ 	*pmem = ctx->sq_buffer[(dest >> 5) & 1];
+@@ -61,6 +67,9 @@ static void DYNACALL sqWrite_nommu_area_3(u32 dest, Sh4Context *ctx)
+ 
+ static void DYNACALL sqWrite_nommu_area_3_nonvmem(u32 dest, Sh4Context *ctx)
+ {
++#ifdef SWR_AOT
++	swraot_ram_written(dest & ~31u, 32);
++#endif
+ 	u8* pmem = &mem_b[0];
+ 
+ 	memcpy((SQBuffer *)&pmem[dest & (RAM_MASK - 0x1F)], &ctx->sq_buffer[(dest >> 5) & 1], sizeof(SQBuffer));
+diff --git a/core/reios/gdrom_hle.cpp b/core/reios/gdrom_hle.cpp
+index 2526889..9557ab4 100644
+--- a/core/reios/gdrom_hle.cpp
++++ b/core/reios/gdrom_hle.cpp
+@@ -4,6 +4,9 @@
+ 	Bits and pieces from redream (https://github.com/inolen/redream)
+ */
+ 
++#ifdef SWR_AOT
++extern "C" void swraot_ram_written(unsigned addr, unsigned size);
++#endif
+ #include <cstdio>
+ #include "types.h"
+ #include "hw/sh4/sh4_mem.h"
+@@ -184,6 +187,9 @@ static void GDROM_HLE_ReadTOC()
+ 
+ static void readSectors(u32 addr, u32 sector, u32 count, bool virtualAddr)
+ {
++#ifdef SWR_AOT
++	swraot_ram_written(addr, count * 2048);
++#endif
+ 	gd_hle_state.cur_sector = sector + count - 1;
+ 	if (!virtualAddr || !mmu_enabled())
+ 	{

@@ -1,0 +1,15 @@
+# Builds the game module (libswr_game.so / libswrdc_game.so) from the C sources generated from YOUR ROM.
+CC ?= cc
+CFLAGS = -O2 -fPIC -fvisibility=hidden -fno-strict-aliasing -fexceptions -w -DNDEBUG -Isdk
+MACHINE ?= hikaru
+OUT ?= ../libswr_game.so
+SRCS = $(sort $(wildcard gen/blk_*.c))
+OBJS = $(addprefix obj/,$(notdir $(SRCS:.c=.o))) obj/blk_module_game.o
+
+all: $(OUT)
+obj/%.o: gen/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+obj/blk_module_game.o: sdk/blk_module_game.c
+	$(CC) $(CFLAGS) $(if $(filter dreamcast,$(MACHINE)),-DSWR_DREAMCAST) -c $< -o $@
+$(OUT): $(OBJS)
+	$(CC) -shared -o $@ $(OBJS) -lm -s

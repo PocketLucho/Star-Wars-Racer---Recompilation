@@ -1,0 +1,54 @@
+# STAR WARS RACER - RECOMP: never commit game-derived files
+# (ROMs, disc images, generated blocks, RAM dumps, miss/seen lists with code bytes, game modules, saves)
+/roms/
+/rom/
+*.zip
+*.chd
+*.gdi
+*.cdi
+*.bin
+*.nv
+*.state
+gen/
+gen[0-9]*/
+/builder/obj/
+/builder/work/
+/builder/tools/
+*misses*.txt
+*seen*.txt
+swr_game.dll
+swrdc_game.dll
+libswr_game.so
+libswrdc_game.so
+/out/
+/dist/
+
+# build output
+*.o
+*.obj
+*.res
+*.exe
+*.dll
+*.so
+*.log
+/emu/win64/
+/emu/hikaru_run
+/emu/hikaru_aot
+/emu/hikaru_aot_vk
+/emu/swracer
+/emu/cpview
+/emu/vkframes/
+/emu/frames/
+/emu/capturas/
+/tools/bin/
+/tools/blockgen
+__pycache__/
+*.png
+!/icons/*.png
+*.ppm
+*.wav
+
+# fetched dependencies (third_party/fetch_deps.sh, dreamcast/setup.sh)
+/third_party/Vulkan-Headers/
+/third_party/SDL2/
+/dreamcast/flycast/

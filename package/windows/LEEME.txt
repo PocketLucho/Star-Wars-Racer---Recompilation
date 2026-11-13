@@ -1,0 +1,48 @@
+STAR WARS RACER - RECOMP (Windows x64 + Vulkan)
+===============================================
+Hecho por Pocket_lucho con Claude.  https://buymeacoffee.com/pocket_lucho
+Codigo fuente y licencia (GPL v2): https://github.com/PocketLucho/Star-Wars-Racer---Recompilation
+
+Este paquete NO contiene codigo, graficos, sonido ni BIOS de los juegos.
+
+Primeros pasos
+--------------
+1. Copia tu romset de MAME (podrace.zip o swracer.zip, con la BIOS epr-23400a.ic94 dentro) en la
+   carpeta "roms" y/o tu imagen de Dreamcast PAL (.chd o .gdi) en la carpeta "dreamcast".
+2. Ejecuta CONSTRUIR_JUEGO.bat una vez. Descarga el compilador llvm-mingw (180 MB, solo la primera
+   vez), lee el programa del juego de tu ROM, lo traduce a C y lo compila en swr_game.dll
+   (recreativa) y swrdc_game.dll (Dreamcast). Tarda unos minutos. Hace falta conexion a internet la
+   primera vez.
+3. Ejecuta SWRacer-Launcher.exe y elige juego.
+Sin el paso 2 los juegos funcionan con el interprete (mas lento; lo avisa el titulo de la ventana).
+Los .dll generados salen de TU copia del juego: son para uso personal, no los distribuyas.
+
+Recreativa: teclas por defecto (se cambian en F10)
+--------------------------------------------------
+  5 moneda   1 start   Espacio boost / confirmar
+  Arriba/Abajo  las dos palancas     A/Z palanca izquierda     K/M palanca derecha
+  Izq/Der  girar; en los menus cambian la opcion
+  F2 test (entra al menu de servicio y confirma)   F1 service (mueve el cursor)
+  P pausa   F10 OPCIONES   F11 pantalla completa   F12 captura   Esc salir
+Mando XInput: modo "Sticks" (cada stick una palanca) o "Gatillos" (LT/RT palancas, stick gira).
+  A/B boost, Start start, Back moneda, LB/RB seleccion.
+
+Opciones (F10): idioma (automatico / espanol / English), resolucion interna 1x-8x, MSAA,
+panoramico 16:9, pantalla completa, region (Japon, EE. UU., Exportacion/Europa, Australia, Corea),
+trucos (desbloquear a Ben Quadinaros y Gasgano: aparecen en SELECT PODRACER pulsando "anterior"
+desde Anakin), velocidad de las palancas, modo del mando y teclas.
+Sonido en la demo: F2 > SYSTEM ASSIGNMENTS > ADVERTISE SOUND = ON.
+
+Dreamcast
+---------
+Tab abre el menu de Flycast (controles, video, trucos, idioma, guardar partida...).
+Panoramico 16:9 activado por defecto (Settings > Video > "Widescreen Game Cheats").
+Al jugar se crea swraot_misses.txt con lo que se ejecuto fuera de lo recompilado; sirve para
+ampliar la lista de bloques en la siguiente version.
+
+Novedades de esta version
+-------------------------
+- Distribucion sin codigo del juego: el motor y un constructor que genera el modulo en tu PC.
+- Interfaz en espanol e ingles.
+- Recreativa: desenfoque de movimiento al usar el turbo.
+- Dreamcast: mas bloques recompilados (38.000).

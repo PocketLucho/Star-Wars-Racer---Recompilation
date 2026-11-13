@@ -1,0 +1,13 @@
+# CMake toolchain for cross-compiling the Dreamcast engine to Windows x64 with llvm-mingw. TC = toolchain folder.
+if(NOT DEFINED ENV{TC})
+  message(FATAL_ERROR "set TC to the llvm-mingw folder")
+endif()
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_C_COMPILER $ENV{TC}/bin/x86_64-w64-mingw32-clang)
+set(CMAKE_CXX_COMPILER $ENV{TC}/bin/x86_64-w64-mingw32-clang++)
+set(CMAKE_RC_COMPILER $ENV{TC}/bin/x86_64-w64-mingw32-windres)
+set(CMAKE_FIND_ROOT_PATH $ENV{TC}/x86_64-w64-mingw32)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
