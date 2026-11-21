@@ -21,7 +21,8 @@ If you want to support me: https://buymeacoffee.com/pocket_lucho
 * Your own MAME romset of the arcade game: `podrace.zip` or `swracer.zip` (with the Hikaru BIOS
   `epr-23400a.ic94` inside), and/or
 * your own image of the Dreamcast game, PAL version T-23001D-50 (`.chd` or `.gdi`).
-* Windows 10/11 64-bit or Linux x86_64, with a Vulkan 1.1 driver.
+* Windows 10/11 64-bit, or Linux x86_64 (glibc 2.35+: SteamOS 3, Ubuntu 22.04 or later, Fedora, Arch...), with a
+  Vulkan 1.1 driver.
 
 **Neither this repository nor the released packages contain any code, graphics, sound or BIOS of the games.**
 The recompiled code is generated on your PC from your own files.
@@ -42,11 +43,13 @@ The recompiled code is generated on your PC from your own files.
 
 Without step 3 the games still run, on the interpreter (slower; the window title says so).
 
-## Getting started (Linux / Steam Deck)
+## Getting started (Linux x86_64 / SteamOS)
 
-Unpack the tarball, copy the ROM as above, run `./build_game.sh` once (needs `cc` and `make`:
-`sudo apt install build-essential`) and then `./swracer`. It needs SDL2 (`libsdl2-2.0-0`) and a Vulkan driver.
-The Dreamcast engine for Linux is built from source (see `dreamcast/setup.sh`).
+Download `StarWarsRacer-Recomp-linux-x64.tar.gz`, extract it, copy the ROM and/or the disc image as above, run
+`./build_game.sh` once and play with `./StarWarsRacer.sh` (arcade) or `./StarWarsRacer-DC.sh` (Dreamcast).
+Nothing has to be installed: SDL is built into the programs, and if there is no C compiler (SteamOS) the builder
+downloads a portable one (Zig) into its own folder. On SteamOS do this in Desktop Mode and then add both `.sh`
+files to Steam as non-Steam games. More details in `README-linux.txt` inside the package.
 
 ## Features
 
@@ -62,13 +65,20 @@ The Dreamcast engine for Linux is built from source (see `dreamcast/setup.sh`).
 
 ## Building from source
 
-    third_party/fetch_deps.sh                 # Vulkan-Headers and SDL2 headers (pinned)
+    tools/package_linux.sh                               # Linux / SteamOS package (both engines + builder)
+    LLVM_MINGW=/path/to/llvm-mingw tools/package_windows.sh   # Windows package (cross-compiled)
+
+or step by step:
+
+    third_party/fetch_deps.sh                 # Vulkan-Headers and SDL2 sources (pinned)
     cd emu
-    make swracer                              # Linux / Steam Deck frontend (SDL2 + Vulkan)
+    make swracer                              # Linux frontend (system libSDL2; SDL_STATIC=<prefix> for static)
     make hikaru_run                           # headless test program
     TC=/path/to/llvm-mingw ./build_win.sh     # Windows engine and launcher (cross-compiled)
     ../dreamcast/setup.sh                     # Dreamcast engine: Flycast at a pinned commit + our core
 
+The packages are built by GitHub Actions on every push (`.github/workflows/build.yml`), including a check in an
+Arch Linux container without compiler or development packages, like SteamOS; tags `v*` publish a release.
 The engines contain no game code. The builder (`builder/`, plus `package/` scripts) makes the game module
 from the user's ROM. See [docs/TECHNICAL.md](docs/TECHNICAL.md); development history in
 [docs/STATUS.es.md](docs/STATUS.es.md) (Spanish).

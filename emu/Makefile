@@ -48,12 +48,21 @@ hikaru_aot_vk: $(filter-out main_cli.o,$(CORE)) main_vk.o $(VKOBJS) $(GEN_OBJS)
 miniz.o: ../third_party/miniz/miniz.c
 	$(CC) -O2 -DMINIZ_NO_ZLIB_COMPATIBLE_NAMES -I../third_party/miniz -c $< -o $@
 
-# Linux / Steam Deck frontend (SDL2 + Vulkan). SDL2 headers from third_party/SDL2 (release-2.30.0), links the
-# system libSDL2-2.0.so.0 (SteamOS and desktop distros ship it).
+# Linux / Steam Deck frontend (SDL2 + Vulkan). SDL2 headers from third_party/SDL2 (release-2.30.0).
+# By default it links the system libSDL2-2.0.so.0. The portable package (tools/package_linux.sh) passes
+# SDL_STATIC=<prefix of a static SDL2 build>: SDL is then inside the binary and its video/audio backends
+# (X11, Wayland, PipeWire, PulseAudio, ALSA) are loaded at run time, so nothing has to be installed.
+SDL_STATIC ?=
+ifeq ($(SDL_STATIC),)
 SDLINC=-I../third_party/SDL2/include
+SDLLIB=-l:libSDL2-2.0.so.0 -Wl,-rpath,'$$ORIGIN/lib'
+else
+SDLINC=-I$(SDL_STATIC)/include/SDL2
+SDLLIB=$(SDL_STATIC)/lib/libSDL2.a -pthread
+endif
 osd.o: osd.c osd.h font8x16.h
 	$(CC) $(CFLAGS) -c $<
 main_sdl.o: main_sdl.c $(HDRS) vkrender.h osd.h
 	$(CC) $(CFLAGS) $(VKINC) $(SDLINC) -c main_sdl.c -o $@
 swracer: $(filter-out main_cli.o,$(CORE)) main_sdl.o osd.o $(VKOBJS) blk_stub.o
-	$(CC) -o $@ $^ -lm -lz -ldl -l:libSDL2-2.0.so.0 -Wl,-rpath,'$$ORIGIN/lib'
+	$(CC) -o $@ $^ $(SDLLIB) -lm -lz -ldl

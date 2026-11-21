@@ -1,8 +1,28 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fee2357..11d6e6a 100644
+index fee2357..a1f2e3f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1474,7 +1474,7 @@ if(NOT LIBRETRO)
+@@ -101,6 +101,7 @@ option(USE_OSS "Build with OSS support" OFF)
+ option(USE_PULSEAUDIO "Build with PulseAudio support" ON)
+ option(USE_BREAKPAD "Build and link with breakpad library" ON)
+ option(USE_LUA "Build with Lua support" ON)
++option(SWR_NO_CURL "Do not link libcurl (portable Linux package)" OFF)
+ option(ENABLE_GDB_SERVER "Build with GDB debugging support" OFF)
+ option(ENABLE_DC_PROFILER "Build with support for target machine (SH4) profiler" OFF)
+ option(ENABLE_FC_PROFILER "Build with support for host app (Flycast) profiler" OFF)
+@@ -559,7 +560,10 @@ if(NOT LIBRETRO)
+ 		target_compile_definitions(${PROJECT_NAME} PRIVATE USE_SDL USE_SDL_AUDIO)
+ 		add_subdirectory(core/sdl)
+ 
+-		if((UNIX AND NOT APPLE) OR NINTENDO_SWITCH)
++		if(SWR_NO_CURL AND UNIX AND NOT APPLE)
++			# STAR WARS RACER - RECOMP (portable Linux / SteamOS package): HTTP features unused, no libcurl
++			target_compile_definitions(${PROJECT_NAME} PRIVATE SWR_NO_CURL)
++		elseif((UNIX AND NOT APPLE) OR NINTENDO_SWITCH)
+ 			find_package(CURL REQUIRED)
+ 			target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl)
+ 		endif()
+@@ -1474,7 +1478,7 @@ if(NOT LIBRETRO)
  			endif()
  			set_target_properties(${PROJECT_NAME} PROPERTIES RESOURCE "${ResourceFiles}")
  		else()
@@ -175,6 +195,57 @@ index 2f4f712..2875e23 100644
  	u8* pmem = &mem_b[0];
  
  	memcpy((SQBuffer *)&pmem[dest & (RAM_MASK - 0x1F)], &ctx->sq_buffer[(dest >> 5) & 1], sizeof(SQBuffer));
+diff --git a/core/linux-dist/main.cpp b/core/linux-dist/main.cpp
+index cace4bc..474227d 100644
+--- a/core/linux-dist/main.cpp
++++ b/core/linux-dist/main.cpp
+@@ -243,8 +243,25 @@ int main(int argc, char* argv[])
+ 	i18n::init();
+ 
+ 	// Set directories
++#ifdef SWR_AOT
++	/* Star Wars Racer recomp: portable mode as on Windows. With an emu.cfg next to the program, the
++	   configuration, saves and data stay in the program's folder (SteamOS: everything in one folder). */
++	char exe[4096];
++	ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
++	std::string exedir;
++	if (n > 0) { exe[n] = 0; exedir = exe; exedir.resize(exedir.rfind('/') + 1); }
++	if (!exedir.empty() && access((exedir + "emu.cfg").c_str(), W_OK) == 0)
++	{
++		set_user_config_dir(exedir);
++		flycast::mkdir((exedir + "data/").c_str(), 0755);
++		set_user_data_dir(exedir + "data/");
++	}
++	else
++#endif
++	{
+ 	set_user_config_dir(find_user_config_dir());
+ 	set_user_data_dir(find_user_data_dir());
++	}
+ 	for (const auto& dir : find_system_config_dirs())
+ 		add_system_config_dir(dir);
+ 	for (const auto& dir : find_system_data_dirs())
+diff --git a/core/oslib/http_client.cpp b/core/oslib/http_client.cpp
+index 6a25059..fa50abb 100644
+--- a/core/oslib/http_client.cpp
++++ b/core/oslib/http_client.cpp
+@@ -326,6 +326,16 @@ void term()
+ }
+ #endif	// !TARGET_UWP
+ 
++#elif defined(SWR_NO_CURL)
++// STAR WARS RACER - RECOMP (Linux): no HTTP features are used, so libcurl is not linked.
++// This keeps the binary portable across distributions (SteamOS, Arch, Fedora...).
++namespace http {
++void init() {}
++int get(const std::string&, std::vector<u8>&, const Headers *, Headers *) { return 500; }
++int post(const std::string&, const char *, const char *, std::vector<u8>&) { return 500; }
++int post(const std::string&, const std::vector<PostField>&) { return 500; }
++void term() {}
++}
+ #else
+ #include <curl/curl.h>
+ 
 diff --git a/core/reios/gdrom_hle.cpp b/core/reios/gdrom_hle.cpp
 index 2526889..9557ab4 100644
 --- a/core/reios/gdrom_hle.cpp

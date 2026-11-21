@@ -1,0 +1,81 @@
+# Builds the distributable packages (engines + builder, no game code) for Windows and Linux / SteamOS
+# and publishes them as a GitHub release when a tag v* is pushed.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to create, e.g. v2026.11.21'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  LINUX_DEPS: >-
+    build-essential cmake ninja-build git libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev
+    libxss-dev libxinerama-dev libxfixes-dev libxkbcommon-dev libwayland-dev libegl-dev libdecor-0-dev
+    libpulse-dev libasound2-dev libpipewire-0.3-dev libudev-dev libgl-dev zlib1g-dev
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build zip
+      - name: llvm-mingw
+        run: |
+          curl -sL -o lm.tar.xz https://github.com/mstorsjo/llvm-mingw/releases/download/20251104/llvm-mingw-20251104-ucrt-ubuntu-22.04-x86_64.tar.xz
+          tar -xf lm.tar.xz -C $HOME
+      - name: Build package
+        run: LLVM_MINGW=$HOME/llvm-mingw-20251104-ucrt-ubuntu-22.04-x86_64 tools/package_windows.sh $PWD/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/StarWarsRacer-Recomp-win64.zip
+
+  linux:
+    # Ubuntu 22.04 = glibc 2.35 baseline: the binaries then run on SteamOS 3, Ubuntu 22.04+, Fedora, Arch...
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - name: Build package
+        run: tools/package_linux.sh $PWD/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/StarWarsRacer-Recomp-linux-x64.tar.gz
+
+  release:
+    needs: [windows, linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then TAG="${{ inputs.version }}"; fi
+          cat > notes.md <<'NOTES'
+          Engines + builder for Windows x64 and Linux x86_64 / SteamOS. **No game code, ROM, BIOS or disc image included.**
+
+          1. Copy `podrace.zip` (or `swracer.zip`) to `roms/` and/or the Dreamcast image (`.chd` / `.gdi`) to `dreamcast/`.
+          2. Windows: run `BUILD_GAME.bat` (or `CONSTRUIR_JUEGO.bat`) once. Linux / SteamOS: run `./build_game.sh` once
+             (nothing to install: it downloads a portable compiler if there is none). It builds the game modules from your own files.
+          3. Windows: run `SWRacer-Launcher.exe`. Linux / SteamOS: `./StarWarsRacer.sh` (arcade) or `./StarWarsRacer-DC.sh` (Dreamcast);
+             in SteamOS add them to Steam as non-Steam games.
+
+          Motores y constructor para Windows y Linux / SteamOS, sin código, ROM, BIOS ni imagen de los juegos. Instrucciones en LEEME.txt / LEEME-linux.txt.
+          If you want to support me: https://buymeacoffee.com/pocket_lucho
+          NOTES
+          gh release create "$TAG" out/windows/StarWarsRacer-Recomp-win64.zip out/linux/StarWarsRacer-Recomp-linux-x64.tar.gz \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "STAR WARS RACER - RECOMP $TAG" --notes-file notes.md

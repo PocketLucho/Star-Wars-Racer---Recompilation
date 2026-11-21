@@ -49,6 +49,8 @@ __pycache__/
 *.wav
 
 # fetched dependencies (third_party/fetch_deps.sh, dreamcast/setup.sh)
-/third_party/Vulkan-Headers/
-/third_party/SDL2/
+/third_party/Vulkan-Headers
+/third_party/SDL2
 /dreamcast/flycast/
+/build-linux/
+/build-windows/

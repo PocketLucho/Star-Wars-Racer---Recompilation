@@ -21,7 +21,8 @@ Si quieres apoyarme: https://buymeacoffee.com/pocket_lucho
 * Tu propio romset de MAME de la recreativa: `podrace.zip` o `swracer.zip` (con la BIOS de Hikaru
   `epr-23400a.ic94` dentro), y/o
 * tu propia imagen del juego de Dreamcast, versión PAL T-23001D-50 (`.chd` o `.gdi`).
-* Windows 10/11 de 64 bits o Linux x86_64, con un driver Vulkan 1.1.
+* Windows 10/11 de 64 bits, o Linux x86_64 (glibc 2.35+: SteamOS 3, Ubuntu 22.04 o posterior, Fedora, Arch...),
+  con un driver Vulkan 1.1.
 
 **Ni este repositorio ni los paquetes publicados incluyen código, gráficos, sonido o BIOS de los juegos.**
 El código recompilado se genera en tu PC a partir de tus propios archivos.
@@ -42,11 +43,13 @@ El código recompilado se genera en tu PC a partir de tus propios archivos.
 
 Sin el paso 3 los juegos funcionan igualmente, con el intérprete (más lento; lo avisa el título de la ventana).
 
-## Primeros pasos (Linux / Steam Deck)
+## Primeros pasos (Linux x86_64 / SteamOS)
 
-Descomprime el tarball, copia la ROM como arriba, ejecuta una vez `./build_game.sh` (necesita `cc` y `make`:
-`sudo apt install build-essential`) y después `./swracer`. Necesita SDL2 (`libsdl2-2.0-0`) y un driver Vulkan.
-El motor de Dreamcast para Linux se compila desde el código (ver `dreamcast/setup.sh`).
+Descarga `StarWarsRacer-Recomp-linux-x64.tar.gz`, descomprímelo, copia la ROM y/o la imagen de disco como arriba,
+ejecuta una vez `./build_game.sh` y juega con `./StarWarsRacer.sh` (recreativa) o `./StarWarsRacer-DC.sh`
+(Dreamcast). No hay que instalar nada: SDL va dentro de los programas y, si no hay compilador de C (SteamOS), el
+constructor descarga uno portátil (Zig) en su propia carpeta. En SteamOS hazlo en el Modo Escritorio y después
+añade los dos `.sh` a Steam como juegos que no son de Steam. Más detalles en `LEEME-linux.txt` dentro del paquete.
 
 ## Funciones
 
@@ -65,7 +68,12 @@ El motor de Dreamcast para Linux se compila desde el código (ver `dreamcast/set
 
 ## Compilar desde el código
 
-Ver [README.md](README.md#building-from-source) y [docs/TECHNICAL.md](docs/TECHNICAL.md).
+    tools/package_linux.sh                                    # paquete Linux / SteamOS
+    LLVM_MINGW=/ruta/a/llvm-mingw tools/package_windows.sh    # paquete Windows (compilación cruzada)
+
+Detalles en [README.md](README.md#building-from-source) y [docs/TECHNICAL.md](docs/TECHNICAL.md). GitHub Actions
+compila los paquetes en cada push, con una comprobación en un contenedor Arch Linux sin compilador ni paquetes de
+desarrollo (como SteamOS); las etiquetas `v*` publican una versión.
 Historial de desarrollo: [docs/STATUS.es.md](docs/STATUS.es.md).
 
 ## Aspectos legales

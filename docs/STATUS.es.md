@@ -33,3 +33,7 @@ el usuario.
 15. Más bloques de Dreamcast, panorámico de Dreamcast, iconos.
 16. Distribución sin código del juego (motor + constructor que genera el módulo en el PC del usuario),
     interfaz en español e inglés, desenfoque del turbo, repositorio público.
+17. Paquete portátil para Linux / SteamOS como el de Virtua NBA: SDL dentro de los programas, Flycast sin
+    libcurl/libao/OpenMP y con modo portátil, constructor sin `make` que descarga Zig si no hay compilador,
+    lanzadores `StarWarsRacer.sh` / `StarWarsRacer-DC.sh` para Steam, CI con comprobación en Arch Linux y
+    publicación de versiones.

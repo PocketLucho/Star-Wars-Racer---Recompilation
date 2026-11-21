@@ -1,0 +1,55 @@
+STAR WARS RACER - RECOMP para Linux x86_64 y SteamOS  (Hecho por Pocket_lucho con Claude)
+=========================================================================================
+
+Si quieres apoyarme: https://buymeacoffee.com/pocket_lucho
+
+Dos juegos en una carpeta:
+  - Star Wars Racer Arcade (recreativa Sega Hikaru)   -> StarWarsRacer.sh
+  - Star Wars Episode I Racer (Dreamcast, PAL)          -> StarWarsRacer-DC.sh
+
+REQUISITOS: ninguno que instalar. Funciona en SteamOS (Steam Deck, Legion Go S...), Ubuntu 22.04
+o posterior, Fedora, Arch, etc. Hace falta un driver Vulkan (SteamOS ya lo trae). Si el sistema
+no tiene compilador de C, build_game.sh descarga uno portátil (Zig, ~45 MB) la primera vez,
+dentro de esta carpeta. No hace falta sudo. Sólo hace falta conexión a internet esa primera vez.
+
+INSTALACIÓN
+1. Copia tu romset de MAME podrace.zip (o swracer.zip, con la BIOS epr-23400a.ic94 dentro) en la
+   carpeta "roms" y/o tu imagen de Dreamcast PAL (.chd o .gdi) en la carpeta "dreamcast".
+2. Abre una terminal en esta carpeta y ejecuta UNA vez:   ./build_game.sh
+   Lee el programa de TUS archivos, lo traduce a C y lo compila en libswr_game.so (recreativa) y
+   libswrdc_game.so (Dreamcast). Tarda unos minutos. Para el Dreamcast se abre una ventana unos
+   segundos: es normal.
+3. Para jugar:   ./StarWarsRacer.sh   o   ./StarWarsRacer-DC.sh
+   (si falla, el motivo se muestra en una ventana y queda en swracer.log / swracer-dc.log)
+   Sin el paso 2 los juegos funcionan igualmente, pero más lentos (con el intérprete).
+
+STEAMOS (Steam Deck / Legion Go S)
+1. Pasa al Modo Escritorio (botón Steam > Apagar > Cambiar a escritorio).
+2. Descomprime el .tar.gz (por ejemplo en ~/Games/StarWarsRacer-Recomp) y copia la ROM y/o la
+   imagen de Dreamcast.
+3. En el gestor de archivos (Dolphin), dentro de la carpeta: clic derecho >
+   "Abrir terminal aquí" y escribe:
+       chmod +x *.sh swracer swracer-dc
+       ./build_game.sh
+4. Prueba los juegos con ./StarWarsRacer.sh y ./StarWarsRacer-DC.sh
+5. Para jugar en Modo Juego: abre Steam en el escritorio > "Añadir un juego" >
+   "Añadir un juego que no es de Steam" > Examinar > elige StarWarsRacer.sh (cambia el filtro
+   a "Todos los archivos"). Repite con StarWarsRacer-DC.sh. Vuelve al Modo Juego y aparecerán
+   en tu biblioteca. Como imagen puedes usar arcade.png y dreamcast.png de esta carpeta.
+
+CONTROLES
+  Recreativa: el mando funciona directamente. Modo "Sticks" (por defecto): cada stick hacia
+    arriba mueve una palanca; o modo "Gatillos" (LT/RT palancas, stick izquierdo gira).
+    A/B turbo y confirmar, Start, Select = moneda, LB/RB = botones de selección.
+    L3+R3 (o F10) abre las opciones: idioma, resolución, MSAA, panorámico, región, trucos
+    (Ben Quadinaros y Gasgano), mando y teclas. En SteamOS arranca a pantalla completa y en
+    panorámico.
+    Teclado: 5 moneda, 1 start, Espacio turbo, flechas palancas/girar, F2 test, F1 service,
+    P pausa, F11 pantalla completa, F12 captura, Esc salir.
+  Dreamcast: mando directo. El menú de Flycast (controles, vídeo, trucos, guardar partida) se
+    abre con Tab o con el botón asignado en sus opciones de controles. Panorámico activado.
+    La configuración y las partidas se guardan en esta carpeta (emu.cfg y "data").
+
+Este paquete no contiene nada de los juegos. libswr_game.so y libswrdc_game.so se generan con
+tus archivos: no los compartas. Licencia GPL v2 (el motor de Dreamcast se basa en Flycast).
+Código fuente: https://github.com/PocketLucho/Star-Wars-Racer---Recompilation

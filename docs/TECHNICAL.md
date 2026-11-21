@@ -7,7 +7,8 @@
 | `emu/` | The Hikaru machine and the SH-4 core (C). Frontends: `main_win32.c` (Windows), `main_sdl.c` (Linux / Steam Deck), `main_cli.c` (headless tests), `launcher_win32.c`. |
 | `tools/` | `blockgen.c` (block generator; `blockgen.py` is the reference it was ported from and produces identical output), generators of the opcode tables, analysis scripts. |
 | `builder/` | What the user runs: `build_game.ps1`, makefiles, `sdk/` (the headers and generator the module is compiled with) and `seeds_*.txt` (entry addresses only). |
-| `package/` | The launch scripts that sit at the root of a released package. |
+| `package/` | What sits at the root of a released package: `windows/` (bat, LEEME, launcher.ini, emu.cfg), `linux/` (`build_game.sh`, `StarWarsRacer.sh`, `StarWarsRacer-DC.sh`, LEEME/README). |
+| `tools/package_*.sh` | Build the release packages (also used by CI, `.github/workflows`). |
 | `dreamcast/` | Flycast patch (`flycast-swraot.patch`, pinned commit in `setup.sh`), the executor (`swraot/`), `chd2gd.c`. |
 | `icons/` | Original icons and the script that draws them. |
 
@@ -56,3 +57,20 @@ the addresses (not the bytes) to the seed files.
 `swraot_executor.cpp` implements Flycast's `Sh4Executor` with our core: registers are mirrored once per time
 slice, exceptions and interrupts stay Flycast's. Widescreen: a hook at the function that builds the camera
 (8C0872B4, PAL) widens the field of view and the aspect for its duration.
+
+## Portable Linux / SteamOS package
+
+* `swracer` links SDL2 statically (built from `third_party/SDL2`); SDL loads X11/Wayland, PipeWire/PulseAudio/ALSA
+  at run time. `swracer-dc` is Flycast built with bundled SDL and libzip, no libcurl (`SWR_NO_CURL`), no libao or
+  OpenMP, static libstdc++/libgcc. `tools/package_linux.sh` refuses binaries that need any library outside a
+  short allow-list (libc, libm, libz, libzstd, libpng16, GL/EGL, udev, pulse, asound...). Built on Ubuntu 22.04
+  (glibc 2.35 baseline).
+* With an `emu.cfg` next to `swracer-dc`, Flycast keeps its configuration, saves and data in the program's folder
+  (portable mode, as on Windows) and finds the disc in `dreamcast/`.
+* `build_game.sh` needs no `make`: it compiles with `xargs -P`. Without a working C compiler it downloads Zig 0.13.0
+  (pinned SHA-256) into `builder/tools` and builds the module for glibc 2.28.
+* `StarWarsRacer.sh` / `StarWarsRacer-DC.sh` are the entries for Steam (non-Steam game): they run the builder in a
+  terminal if the module is missing, log to `swracer.log` / `swracer-dc.log` and show errors in a window
+  (kdialog / zenity). In SteamOS (`SteamDeck` / `SteamGamepadUI` set) the arcade game starts fullscreen in 16:9.
+* CI (`steamos` job): an Arch Linux container with only runtime libraries checks that both engines load and that
+  the builder bootstraps Zig and builds a module (`tools/make_test_gen.sh`, synthetic blocks).
